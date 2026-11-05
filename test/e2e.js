@@ -154,6 +154,35 @@ app.on('browser-window-created', async (_e, win) => {
         && r.blocks[1].props.checked === true && r.blocks[2].type === 'code' && r.blocks[3].props.text === '<b>bold</b> text';
     })`);
 
+    // Find/replace across inline formatting, with literal input and structural undo.
+    await js(`(() => {
+      const e = window.app.editor;
+      const b = e.addBlock('paragraph', e.page.id, e.lastChildPosition(e.page.id), { text: '<b>Need</b><i>le</i> Needle needle' });
+      e.renderBlocks(); window.__findBlock = b.id;
+      window.app.command('replace');
+      e.findReplace.query.value = 'Needle'; e.findReplace.refresh(true);
+    })()`);
+    await expect('find counts matches across formatting', `window.app.editor.findReplace.matches.length === 3`);
+    await expect('find panel focuses search', `document.activeElement === window.app.editor.findReplace.query`);
+    await js(`window.app.editor.findReplace.move(-1)`);
+    await expect('previous match wraps', `window.app.editor.findReplace.index === 2`);
+    await js(`(() => { const f = window.app.editor.findReplace; f.caseSensitive.checked = true; f.refresh(true); })()`);
+    await expect('match case filters results', `window.app.editor.findReplace.matches.length === 2`);
+    await js(`(() => { const f = window.app.editor.findReplace; f.replacement.value = '<$&>'; f.replaceMatches(true); })()`);
+    await expect('replace all inserts literal text and preserves unaffected formatting', `(() => {
+      const e = window.app.editor, n = e.nodes.get(window.__findBlock).text;
+      return n.textContent === '<$&> <$&> needle' && !n.querySelector('script');
+    })()`);
+    await js(`window.app.editor.undo()`);
+    await expect('replace all undoes in one step', `window.app.editor.nodes.get(window.__findBlock).text.innerHTML === '<b>Need</b><i>le</i> Needle needle'`);
+    await js(`window.app.editor.redo()`);
+    await expect('replace all redoes', `window.app.editor.nodes.get(window.__findBlock).text.textContent === '<$&> <$&> needle'`);
+    await js(`(() => { const f = window.app.editor.findReplace; f.query.value = '<$&>'; f.refresh(true); })()`);
+    await expect('find treats regex characters literally', `window.app.editor.findReplace.matches.length === 2`);
+    await shot('find-replace');
+    await key('Escape');
+    await expect('Escape closes panel and clears highlights', `!document.querySelector('.find-panel') && !CSS.highlights.has('find-matches')`);
+
     // Dark mode
     await js(`window.api.setTheme('dark')`);
     await js(`window.app.navigate(window.app.tree.find(t => t.title === 'Getting Started').id)`);

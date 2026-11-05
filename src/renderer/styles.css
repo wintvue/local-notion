@@ -385,3 +385,17 @@ body.sidebar-collapsed .topbar .open-sidebar { display: inline-flex; }
   .page { padding-bottom: 0; }
   .page-header { padding-top: 0; }
 }
+
+/* Page find and replace */
+.find-panel { position: fixed; top: 52px; right: 24px; z-index: 100; max-width: calc(100vw - 32px); padding: 10px; border-radius: 8px; background: var(--bg-elevated); box-shadow: var(--shadow); }
+.find-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.find-row[hidden] { display: none; }
+.find-row input { min-width: 80px; width: 180px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); }
+.find-row input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.find-row button { padding: 5px 8px; background: var(--bg-hover); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+.find-row button:disabled { opacity: .4; cursor: default; }
+.find-status { min-width: 72px; font-size: 12px; color: var(--text-muted); }
+.find-case { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-muted); }
+::highlight(find-matches) { background: #ffe08a; color: #292318; }
+::highlight(find-current) { background: #ff963d; color: #292318; }
+@media print { .find-panel { display: none; } }

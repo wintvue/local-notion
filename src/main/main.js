@@ -111,7 +111,15 @@ function buildMenu() {
         isMac ? { role: 'close' } : { role: 'quit' },
       ],
     },
-    { role: 'editMenu' },
+    { label: 'Edit', submenu: [
+      { role: 'undo' }, { role: 'redo' }, { type: 'separator' },
+      { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'pasteAndMatchStyle' },
+      { role: 'delete' }, { role: 'selectAll' }, { type: 'separator' },
+      { label: 'Find in Page…', accelerator: 'CmdOrCtrl+F', click: () => send('menu', 'find') },
+      { label: 'Replace…', accelerator: isMac ? 'Command+Alt+F' : 'Ctrl+H', click: () => send('menu', 'replace') },
+      { label: 'Find Next', accelerator: isMac ? 'Command+G' : 'F3', click: () => send('menu', 'find-next') },
+      { label: 'Find Previous', accelerator: isMac ? 'Command+Shift+G' : 'Shift+F3', click: () => send('menu', 'find-previous') },
+    ] },
     {
       label: 'View',
       submenu: [

@@ -3,6 +3,7 @@ import {
   el, uid, sanitize, between, debounce, caretOffset, setCaret, splitAtCaret, caretAtStart, caretAtEnd,
   caretOnFirstLine, caretOnLastLine, setCaretAtX, popup, closeMenu, emojiPicker, htmlToText, COLORS, timeAgo, toast,
 } from './util.js';
+import { FindReplace } from './find-replace.js';
 import { markdownToBlocks } from './markdown.js';
 import { DatabaseView, PropertyList } from './database.js';
 
@@ -56,7 +57,13 @@ export class PageEditor {
     this.render();
   }
 
+  openFind(replace = false) {
+    if (!this.findReplace) this.findReplace = new FindReplace(this);
+    this.findReplace.open(replace);
+  }
+
   destroy() {
+    this.findReplace?.close();
     this.flush();
     document.removeEventListener('selectionchange', this.onSelectionChange);
     this.hideFormatBar();

@@ -504,6 +504,10 @@ class App {
     closeMenu();
     switch (cmd) {
       case 'new-page': this.createPage(null); break;
+      case 'find': this.editor?.openFind(); break;
+      case 'replace': this.editor?.openFind(true); break;
+      case 'find-next': this.editor?.findReplace?.move(1); break;
+      case 'find-previous': this.editor?.findReplace?.move(-1); break;
       case 'search': this.openSearch(); break;
       case 'toggle-sidebar': this.toggleSidebar(); break;
       case 'toggle-theme': this.toggleTheme(); break;
