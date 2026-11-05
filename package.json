@@ -37,8 +37,8 @@
     }
   },
   "devDependencies": {
-    "electron": "^44.7.2",
-    "electron-builder": "^26.15.3"
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0"
   },
   "engines": {
     "node": ">=24 <27"
