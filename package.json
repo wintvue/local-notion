@@ -1,0 +1,40 @@
+{
+  "name": "local-notion",
+  "productName": "Local Notion",
+  "version": "1.0.0",
+  "description": "A local-first, Notion-style block editor desktop app",
+  "main": "src/main/main.js",
+  "author": "jos22",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "dist": "electron-builder --mac --dir",
+    "dist:dmg": "electron-builder --mac dmg",
+    "e2e": "electron test/e2e.js"
+  },
+  "build": {
+    "appId": "dev.local.localnotion",
+    "productName": "Local Notion",
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dir"
+      ],
+      "identity": null,
+      "icon": "build/icon.icns"
+    },
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.7.2",
+    "electron-builder": "^26.15.3"
+  }
+}
