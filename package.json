@@ -12,7 +12,10 @@
     "test": "node --test test/*.test.js",
     "dist": "electron-builder --mac --dir",
     "dist:dmg": "electron-builder --mac dmg",
-    "e2e": "electron test/e2e.js"
+    "e2e": "electron test/e2e.js",
+    "check": "node --experimental-vm-modules scripts/check.js",
+    "test:coverage": "node --test --experimental-test-coverage test/*.test.js",
+    "verify": "npm run check && npm run test:coverage"
   },
   "build": {
     "appId": "dev.local.localnotion",
@@ -36,5 +39,8 @@
   "devDependencies": {
     "electron": "^44.7.2",
     "electron-builder": "^26.15.3"
+  },
+  "engines": {
+    "node": ">=24 <27"
   }
 }

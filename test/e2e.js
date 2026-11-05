@@ -16,12 +16,26 @@ require('../src/main/main.js');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const failures = [];
+const results = [];
+const startedAt = Date.now();
+const watchdog = setTimeout(() => {
+  fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify({ results, failures: [...failures, 'Suite timed out'], durationMs: Date.now() - startedAt }, null, 2));
+  console.error('E2E timed out after two minutes');
+  app.exit(1);
+}, 120_000);
+
 
 app.on('browser-window-created', async (_e, win) => {
   if (global.__driven) return;
   global.__driven = true;
   const wc = win.webContents;
-  wc.on('console-message', (e) => { if (e.level === 'error' || e.level === 3) console.log('[renderer error]', e.message); });
+  wc.on('console-message', (e) => {
+    if (e.level === 'error' || e.level === 3) {
+      console.error('[renderer error]', e.message);
+      failures.push(`Renderer error: ${e.message}`);
+    }
+  });
+  wc.on('render-process-gone', (_event, details) => { failures.push(`Renderer stopped: ${details.reason}`); });
   await new Promise((r) => wc.once('did-finish-load', r));
   await sleep(800);
 
@@ -36,6 +50,7 @@ app.on('browser-window-created', async (_e, win) => {
   const expect = async (desc, code) => {
     const ok = await js(code).catch((e) => `threw ${e.message}`);
     console.log(ok === true ? '  ✔' : '  ✖', desc, ok === true ? '' : `→ ${JSON.stringify(ok)}`);
+    results.push({ name: desc, passed: ok === true });
     if (ok !== true) failures.push(desc);
   };
 
@@ -154,6 +169,22 @@ app.on('browser-window-created', async (_e, win) => {
         && r.blocks[1].props.checked === true && r.blocks[2].type === 'code' && r.blocks[3].props.text === '<b>bold</b> text';
     })`);
 
+    await expect('sanitizer strips executable attributes and unsafe link protocols', `import('./js/util.js').then(m => {
+      const host = document.createElement('div');
+      host.innerHTML = m.sanitize('<b onclick="bad()">Bold</b><a href="javascript:bad()">link</a><img src="x" onerror="bad()"><span class="color-red injected">red</span>');
+      return !host.querySelector('[onclick], [onerror], img, [href]') && host.querySelector('b').textContent === 'Bold'
+        && host.querySelector('span').className === 'color-red';
+    })`);
+    await expect('Markdown import escapes HTML and rejects executable links', `import('./js/markdown.js').then(m => {
+      const html = m.inlineMdToHtml('<img src=x onerror=bad()> [click](javascript:bad)');
+      const host = document.createElement('div'); host.innerHTML = html;
+      return !host.querySelector('img, a, script') && host.textContent.includes('<img');
+    })`);
+    await expect('Markdown handles Windows newlines and fenced code literally', `import('./js/markdown.js').then(m => {
+      const result = m.markdownToBlocks("# Imported\\r\\n\\r\\n\`\`\`html\\r\\n<b>literal</b>\\r\\n\`\`\`", { takeTitle: true });
+      return result.title === 'Imported' && result.blocks[0].type === 'code' && result.blocks[0].props.text === '&lt;b&gt;literal&lt;/b&gt;';
+    })`);
+
     // Find/replace across inline formatting, with literal input and structural undo.
     await js(`(() => {
       const e = window.app.editor;
@@ -179,9 +210,21 @@ app.on('browser-window-created', async (_e, win) => {
     await expect('replace all redoes', `window.app.editor.nodes.get(window.__findBlock).text.textContent === '<$&> <$&> needle'`);
     await js(`(() => { const f = window.app.editor.findReplace; f.query.value = '<$&>'; f.refresh(true); })()`);
     await expect('find treats regex characters literally', `window.app.editor.findReplace.matches.length === 2`);
+    await js(`(() => { const f = window.app.editor.findReplace; f.replacement.value = 'replacement'; f.replaceMatches(false); })()`);
+    await expect('replace changes only the active match', `window.app.editor.nodes.get(window.__findBlock).text.textContent === 'replacement <$&> needle'`);
+    await js(`(() => { const f = window.app.editor.findReplace; f.query.value = 'not-present-in-document'; f.refresh(true); f.replaceMatches(true); })()`);
+    await expect('no matches disable replacement and navigation', `(() => { const f = window.app.editor.findReplace; return f.matches.length === 0 && f.next.disabled && f.replaceAll.disabled && f.status.textContent === 'No matches'; })()`);
+    await js(`(() => { const f = window.app.editor.findReplace; f.query.value = ''; f.refresh(true); })()`);
+    await expect('empty query does not match every character', `window.app.editor.findReplace.matches.length === 0`);
+    await js(`(() => { const f = window.app.editor.findReplace; f.query.value = 'replacement'; f.refresh(true); })()`);
     await shot('find-replace');
     await key('Escape');
     await expect('Escape closes panel and clears highlights', `!document.querySelector('.find-panel') && !CSS.highlights.has('find-matches')`);
+
+    await js(`window.app.command('find')`);
+    await js(`window.app.reload()`);
+    await sleep(300);
+    await expect('page navigation cleans up find panel and highlights', `!document.querySelector('.find-panel') && !CSS.highlights.has('find-matches')`);
 
     // Dark mode
     await js(`window.api.setTheme('dark')`);
@@ -197,6 +240,9 @@ app.on('browser-window-created', async (_e, win) => {
     console.error('E2E crashed', e);
     failures.push('crash');
   }
+  clearTimeout(watchdog);
+  if (failures.length) await shot('failure').catch(() => {});
+  fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify({ results, failures, durationMs: Date.now() - startedAt }, null, 2));
   console.log(failures.length ? `\nE2E FAILED (${failures.length})` : '\nE2E PASSED', '— screenshots in', OUT);
   app.exit(failures.length ? 1 : 0);
 });
