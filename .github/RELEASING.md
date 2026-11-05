@@ -2,7 +2,7 @@
 
 ## Pull requests and main
 
-CI runs on pull requests, pushes to main and the implementation branch, and manual dispatch. It checks JavaScript syntax and unit tests on Node 24 and 26, then runs the real Electron UI suite and builds unsigned macOS apps on both Apple Silicon and Intel runners. `npm ci` uses the committed lockfile. The stable `CI passed` check succeeds only when all test/build jobs pass; configure this as a required check after merging the initial implementation. Branch protection is not modified automatically.
+CI runs on pull requests, pushes to main, and manual dispatch. It checks JavaScript syntax and unit tests on Node 24 and 26, then runs the real Electron UI suite and builds unsigned macOS apps on both Apple Silicon and Intel runners. `npm ci` uses the committed lockfile. The stable `CI passed` check succeeds only when all test/build jobs pass; configure this as a required check after merging the initial implementation. Branch protection is not modified automatically.
 
 Unit coverage and logs are uploaded for 14 days. Desktop logs, screenshots, structured test results, and zipped unsigned apps are retained for 7 days. The UI driver uses a temporary SQLite workspace, treats renderer errors as failures, captures failure screenshots, and has a two-minute watchdog. Workflow jobs also have explicit time limits. No real workspace data or credentials are included in artifacts.
 

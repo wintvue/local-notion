@@ -14,7 +14,7 @@
     "dist:dmg": "electron-builder --mac dmg",
     "e2e": "electron test/e2e.js",
     "check": "node --experimental-vm-modules scripts/check.js",
-    "test:coverage": "node --test --experimental-test-coverage test/*.test.js",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-lines=95 --test-coverage-branches=85 --test-coverage-functions=90 test/*.test.js",
     "verify": "npm run check && npm run test:coverage"
   },
   "build": {
