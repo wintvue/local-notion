@@ -58,3 +58,9 @@ npm run e2e         # drives the real app with keystrokes, saves screenshots
 | `src/renderer/js/markdown.js` | Markdown import and export |
 
 Data is stored in `~/Library/Application Support/Local Notion/localnotes.db`. File ▸ Show Data Folder opens it, and `LOCALNOTES_DATA_DIR` overrides the location.
+
+## Continuous integration and releases
+
+GitHub Actions runs syntax checks, unit tests on Node 24/26, and Electron UI tests plus macOS packaging on Apple Silicon and Intel. Logs, screenshots, test results and unsigned app archives are saved as workflow artifacts. Run `npm run verify` locally for syntax and unit coverage.
+
+Version tags trigger the full checks and a signed/notarized build, followed by a draft release with installers and SHA-256 checksums. Apple signing secrets are required; unsigned releases are rejected. See [.github/RELEASING.md](.github/RELEASING.md) for setup, release commands, and the current personal-use branding limitation.
