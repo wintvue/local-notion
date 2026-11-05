@@ -7,6 +7,9 @@ const fs = require('node:fs');
 const os = require('node:os');
 const { app, BrowserWindow } = require('electron');
 
+// Hosted Intel Macs may have no working GPU; exercise the renderer in software.
+if (process.env.CI) app.disableHardwareAcceleration();
+
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'localnotes-e2e-'));
 process.env.LOCALNOTES_DATA_DIR = dataDir;
 const OUT = process.env.E2E_OUT || path.join(dataDir, 'shots');
