@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit tests (Node ${{ matrix.node }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [24, 26]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - name: Syntax and unit coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p test-results
+          npm run verify 2>&1 | tee test-results/unit.log
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: unit-node-${{ matrix.node }}
+          path: test-results/
+          retention-days: 14
+
+  desktop:
+    name: Desktop (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x64
+    env:
+      E2E_OUT: ${{ github.workspace }}/test-results/screenshots
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Electron end-to-end tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p test-results
+          npm run e2e 2>&1 | tee test-results/e2e.log
+      - name: Build unsigned application
+        run: npm run dist -- --config.electronDist=node_modules/electron/dist --publish never
+      - name: Verify packaged application
+        run: node scripts/verify-package.js
+      - name: Archive application bundle
+        env:
+          ARCH: ${{ matrix.arch }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP=$(find dist -maxdepth 2 -name 'Local Notion.app' -type d -print -quit)
+          test -n "$APP"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "dist/Local-Notion-ci-$ARCH.zip"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: desktop-${{ matrix.arch }}
+          path: |
+            test-results/
+            dist/Local-Notion-ci-*.zip
+          retention-days: 7
+
+  required:
+    name: CI passed
+    if: always()
+    needs: [unit, desktop]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require every test and build job
+        env:
+          UNIT_RESULT: ${{ needs.unit.result }}
+          DESKTOP_RESULT: ${{ needs.desktop.result }}
+        run: test "$UNIT_RESULT" = success && test "$DESKTOP_RESULT" = success
